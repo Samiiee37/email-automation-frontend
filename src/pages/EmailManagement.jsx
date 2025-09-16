@@ -1,5 +1,6 @@
 import { useState } from 'react';
 
+
 // Dummy data
 const dummyEmails = ["test@ovam.ai"];
 const dummyFromEmails = ["sender@ovam.ai"];

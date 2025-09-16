@@ -13,7 +13,6 @@ function App() {
   return (
     <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
       <BrowserRouter>
-        <Navbar />
         <Routes>
           <Route path="/auth" element={<GoogleAuth />} />
           <Route path="/" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
