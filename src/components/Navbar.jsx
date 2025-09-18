@@ -1,9 +1,10 @@
-// src/components/Navbar.jsx
 import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { useUser } from '../context/UserContext';
 
 function Navbar() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useUser();
 
   const handleLogout = async () => {
     try {
@@ -30,19 +31,27 @@ function Navbar() {
         <h1 className="text-2xl font-bold text-indigo-400">Automation Tool</h1>
       </div>
 
-      {/* Navigation links */}
-      <nav className="flex-1 p-4">
+      {/* User Info */}
+      {user && (
+        <div className="p-4 border-b border-gray-800 flex items-center">
+          <div className="flex-1">
+            <h2 className="text-lg font-semibold text-white">{user.name}</h2>
+            <p className="text-sm text-gray-400">{user.email}</p>
+          </div>
+        </div>
+      )}
+
+      <nav className="flex-1 p-4 overflow-y-auto">
         <ul className="space-y-3">
           {navLinks.map((link) => (
             <li key={link.to}>
               <Link
                 to={link.to}
-                className={`block px-4 py-2 rounded-lg text-lg font-medium transition-colors duration-200
-                  ${
-                    location.pathname === link.to
-                      ? 'bg-indigo-600 text-white'
-                      : 'text-gray-300 hover:bg-gray-800 hover:text-white'
-                  }`}
+                className={`block px-4 py-2 rounded-lg text-lg font-medium transition-colors duration-200 ${
+                  location.pathname === link.to
+                    ? 'bg-indigo-600 text-white'
+                    : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                }`}
               >
                 {link.label}
               </Link>
@@ -51,7 +60,6 @@ function Navbar() {
         </ul>
       </nav>
 
-      {/* Logout button at bottom */}
       <div className="p-4 border-t border-gray-800">
         <button
           onClick={handleLogout}
