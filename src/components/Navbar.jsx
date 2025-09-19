@@ -1,10 +1,13 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { useState } from 'react';
 import { useUser } from '../context/UserContext';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 
 function Navbar() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useUser();
+  const [isDashboardOpen, setIsDashboardOpen] = useState(false);
 
   const handleLogout = async () => {
     try {
@@ -19,7 +22,6 @@ function Navbar() {
   };
 
   const navLinks = [
-    { to: '/', label: 'Dashboard' },
     { to: '/scrape', label: 'Scrape Management' },
     { to: '/emails', label: 'Email Management' },
     { to: '/send', label: 'Email Sending' },
@@ -43,6 +45,62 @@ function Navbar() {
 
       <nav className="flex-1 p-4 overflow-y-auto">
         <ul className="space-y-3">
+
+          {/* Dashboard with dropdown */}
+          <li>
+            <div
+              className={`flex items-center justify-between px-4 py-2 rounded-lg text-lg font-medium transition-colors duration-200 ${
+                location.pathname === '/' || location.pathname.startsWith('/home') || location.pathname.startsWith('/history')
+                  ? 'bg-indigo-600 text-white'
+                  : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+              }`}
+            >
+              <Link to="/" className="flex-1">
+                Dashboard
+              </Link>
+              <button
+                onClick={() => setIsDashboardOpen((prev) => !prev)}
+                className="ml-2 focus:outline-none"
+              >
+                {isDashboardOpen ? (
+                  <ChevronUp className="w-5 h-5" />
+                ) : (
+                  <ChevronDown className="w-5 h-5" />
+                )}
+              </button>
+            </div>
+
+            {isDashboardOpen && (
+              <ul className="mt-2 ml-4 space-y-2">
+                <li>
+                  <Link
+                    to="/home"
+                    className={`block px-4 py-2 rounded-lg text-base transition-colors duration-200 ${
+                      location.pathname === '/home'
+                        ? 'bg-indigo-500 text-white'
+                        : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                    }`}
+                  >
+                    Home
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    to="/history"
+                    className={`block px-4 py-2 rounded-lg text-base transition-colors duration-200 ${
+                      location.pathname === '/history'
+                        ? 'bg-indigo-500 text-white'
+                        : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                    }`}
+                  >
+                    History
+                  </Link>
+                </li>
+              </ul>
+            )}
+          </li>
+
+          {/* Other nav links */}
           {navLinks.map((link) => (
             <li key={link.to}>
               <Link

@@ -9,6 +9,7 @@ import EmailSending from './pages/EmailSending';
 import GoogleAuth from './pages/GoogleAuth';
 import PrivateRoute from './components/PrivateRoute';
 import { UserProvider } from './context/UserContext';
+import Home from './pages/Home';
 
 function App() {
   return (
@@ -21,6 +22,7 @@ function App() {
           <Route path="/scrape" element={<PrivateRoute><ScrapeManagement /></PrivateRoute>} />
           <Route path="/emails" element={<PrivateRoute><EmailManagement /></PrivateRoute>} />
           <Route path="/send" element={<PrivateRoute><EmailSending /></PrivateRoute>} />
+          <Route path="/home" element={<PrivateRoute><Home /></PrivateRoute>} />
         </Routes>
       </UserProvider>
       </BrowserRouter>
