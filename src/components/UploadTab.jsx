@@ -11,6 +11,11 @@ function UploadTab() {
   const [createdCampaignId, setCreatedCampaignId] = useState(null);
   const [fetchedCampaign, setFetchedCampaign] = useState(null);
 
+  // New state for existing campaigns
+  const [showCampaignListModal, setShowCampaignListModal] = useState(false);
+  const [campaignList, setCampaignList] = useState([]);
+  const [loadingCampaigns, setLoadingCampaigns] = useState(false);
+
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file && file.type === "text/csv") {
@@ -26,6 +31,32 @@ function UploadTab() {
     setShowNameModal(true);
   };
 
+  const handleExistingCampaignClick = async () => {
+    setCampaignType("existing");
+    setShowCampaignListModal(true);
+
+    try {
+      setLoadingCampaigns(true);
+      const res = await fetch("http://localhost:3007/campaign-list", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: user._id }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        setCampaignList(data.campaigns);
+      } else {
+        alert("Failed to fetch campaigns: " + data.message);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error fetching campaigns.");
+    } finally {
+      setLoadingCampaigns(false);
+    }
+  };
+
   const handleNameSubmit = () => {
     if (!tempName.trim()) {
       alert("Please enter a campaign name.");
@@ -35,42 +66,76 @@ function UploadTab() {
     setShowNameModal(false);
   };
 
-  const handleUpload = async () => {
-    if (!selectedFile || !campaignName) {
-      alert("Please choose a CSV file and enter a campaign name.");
-      return;
-    }
-
-    const formData = new FormData();
-    formData.append("csv", selectedFile);
-    formData.append("campaignName", campaignName);
-    formData.append("userId", user._id);
-
-    try {
-      const res = await fetch("http://localhost:3007/campaign-upload", {
-        method: "POST",
-        body: formData,
-      });
-
-      const data = await res.json();
-      if (data.success) {
-        alert("Campaign created successfully!");
-        setCreatedCampaignId(data.campaignId);
-
-        // reset form
-        setSelectedFile(null);
-        setCampaignName("");
-        setCampaignType(null);
-      } else {
-        alert("Failed: " + data.message);
-      }
-    } catch (err) {
-      console.error(err);
-      alert("Error uploading campaign.");
-    }
+  const handleSelectExistingCampaign = (campaign) => {
+    setCampaignName(campaign.name);
+    setCreatedCampaignId(campaign._id); // set the selected campaign ID
+    setShowCampaignListModal(false);
   };
 
-  // Fetch campaign data when created
+const handleUpload = async () => {
+  if (!selectedFile || !campaignName) {
+    alert("Please choose a CSV file and enter a campaign name.");
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append("csv", selectedFile);
+  formData.append("campaignName", campaignName);
+  formData.append("userId", user._id);
+
+  // If existing, also send campaignId
+  if (campaignType === "existing") {
+    formData.append("campaignId", createdCampaignId);
+  }
+
+  try {
+    const endpoint =
+      campaignType === "new"
+        ? "http://localhost:3007/campaign-upload"
+        : "http://localhost:3007/campaign-edit";
+
+    const res = await fetch(endpoint, {
+      method: "POST",
+      body: formData,
+    });
+
+    const data = await res.json();
+    if (data.success) {
+      alert(
+        campaignType === "new"
+          ? "Campaign created successfully!"
+          : "Campaign updated successfully!"
+      );
+      setCreatedCampaignId(data.campaignId || createdCampaignId);
+
+      // reset file only, keep campaign selection
+      setSelectedFile(null);
+
+      // 🔥 Immediately fetch the updated campaign data after edit
+      if (campaignType === "existing") {
+        const res2 = await fetch("http://localhost:3007/campaign-data", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            campaignId: data.campaignId || createdCampaignId,
+          }),
+        });
+        const data2 = await res2.json();
+        if (data2.success) {
+          setFetchedCampaign(data2.campaign);
+        }
+      }
+    } else {
+      alert("Failed: " + data.message);
+    }
+  } catch (err) {
+    console.error(err);
+    alert("Error uploading campaign.");
+  }
+};
+
+
+  // Fetch campaign data when created/selected
   useEffect(() => {
     const fetchCampaignData = async () => {
       if (!createdCampaignId) return;
@@ -114,7 +179,7 @@ function UploadTab() {
           New Campaign
         </button>
         <button
-          onClick={() => setCampaignType("existing")}
+          onClick={handleExistingCampaignClick}
           className={`px-6 py-3 rounded-lg text-lg font-medium transition-colors duration-200 ${
             campaignType === "existing"
               ? "bg-indigo-600 text-white"
@@ -130,6 +195,18 @@ function UploadTab() {
         <div className="mb-6">
           <p className="text-gray-300">
             Selected Campaign Name:{" "}
+            <span className="font-semibold text-indigo-400">
+              {campaignName}
+            </span>
+          </p>
+        </div>
+      )}
+
+      {/* If existing campaign is selected and has name */}
+      {campaignType === "existing" && campaignName && (
+        <div className="mb-6">
+          <p className="text-gray-300">
+            Selected Existing Campaign:{" "}
             <span className="font-semibold text-indigo-400">
               {campaignName}
             </span>
@@ -168,26 +245,26 @@ function UploadTab() {
                 onClick={handleUpload}
                 className="mt-6 px-6 py-3 rounded-lg text-lg font-medium transition-colors duration-200 bg-indigo-600 text-white hover:bg-indigo-700"
               >
-                Upload CSV and Create Campaign
+                {campaignType === "new"
+                  ? "Upload & Create Campaign"
+                  : "Upload & Update Campaign"}
               </button>
             )}
           </div>
         )}
 
-      {/* Display created campaign */}
+      {/* Display created/selected campaign */}
       {fetchedCampaign && (
         <div className="mt-8 p-6 bg-gray-700 rounded-lg border border-gray-600">
           <h3 className="text-xl font-semibold text-indigo-400 mb-4">
-            ✅ Campaign Created
+            ✅ Campaign Loaded
           </h3>
 
-          {/* Campaign name */}
           <p className="text-gray-300 mb-4">
             <span className="font-semibold">Name:</span>{" "}
             {fetchedCampaign.name}
           </p>
 
-          {/* Campaign data table */}
           {fetchedCampaign.data && fetchedCampaign.data.length > 1 ? (
             <div className="overflow-x-auto max-h-80 overflow-y-auto">
               <table className="min-w-full border border-gray-600 rounded-lg overflow-hidden">
@@ -250,7 +327,7 @@ function UploadTab() {
         </div>
       )}
 
-      {/* Name Modal */}
+      {/* Name Modal (New Campaign) */}
       {showNameModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
           <div className="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-600 w-96">
@@ -276,6 +353,44 @@ function UploadTab() {
                 className="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700"
               >
                 Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Campaign List Modal (Existing Campaigns) */}
+      {showCampaignListModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+          <div className="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-600 w-96 max-h-[80vh] overflow-y-auto">
+            <h3 className="text-xl font-semibold mb-4 text-gray-100">
+              Select Existing Campaign
+            </h3>
+
+            {loadingCampaigns ? (
+              <p className="text-gray-400">Loading campaigns...</p>
+            ) : campaignList.length > 0 ? (
+              <ul className="space-y-3">
+                {campaignList.map((c) => (
+                  <li
+                    key={c._id}
+                    className="px-4 py-2 bg-gray-700 rounded-lg text-gray-200 cursor-pointer hover:bg-indigo-600 hover:text-white transition"
+                    onClick={() => handleSelectExistingCampaign(c)}
+                  >
+                    {c.name}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-gray-400">No campaigns found.</p>
+            )}
+
+            <div className="flex justify-end mt-6">
+              <button
+                onClick={() => setShowCampaignListModal(false)}
+                className="px-4 py-2 rounded-lg bg-gray-600 text-gray-200 hover:bg-gray-500"
+              >
+                Close
               </button>
             </div>
           </div>
